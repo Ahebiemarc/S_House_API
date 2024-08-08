@@ -4,8 +4,6 @@ import authRoute from './routes/auth.route';
 
 const app = express();
 
-console.log('test');
-
 
 // middleware
 app.use(express.json());
