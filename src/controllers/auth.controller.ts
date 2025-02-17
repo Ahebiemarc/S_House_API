@@ -54,12 +54,14 @@ export const login = async (req: Request, res: Response) => {
 
         const token = jwt.sign({id: user.id}, process.env.JWT_SECRET_KEY, {expiresIn: age});
 
-        res.cookie('HAUS-AUTH', token, 
+        const {password: userPassword, ...userInfo} = user;
+
+        res.cookie('HAUS_AUTH', token, 
             {
                 httpOnly: true,
                 //secure: true, // that's production
                 maxAge:age
-            }).status(200).json({message: "authentication successful!"});
+            }).status(200).json({message: "authentication successful!", user: userInfo});
 
     } catch (error) {
         console.log(error);
@@ -69,5 +71,5 @@ export const login = async (req: Request, res: Response) => {
 }
 export const logout = (req: Request, res: Response) =>{
     // Code to log out a user goes here
-    res.clearCookie("HAUS-AUTH").status(200).json({message: "Logout successful"})
+    res.clearCookie("HAUS_AUTH").status(200).json({message: "Logout successful"})
 }
