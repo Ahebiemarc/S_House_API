@@ -18,6 +18,97 @@ model User {
   email String @unique
   username String @unique
   password String
+  isAdmin Boolean @default(false)
   avatar String?
   createdAt DateTime @default(now())
+  posts Post[]
+  reviews Review[] // Un utilisateur peut laisser plusieurs avis
+  chatIDs String[] @db.ObjectId
+
+  //
+  chats Chat[] @relation(fields: [chatIDs], references: [id])
+
+}
+
+model Post {
+  id String @id @default(auto()) @map("_id") @db.ObjectId
+  title String 
+  price Int
+  img String[]
+  desc String
+  address String
+  city String
+  bedroom Int
+  bathroom Int
+  lattitude String
+  longitude String
+  type Type
+  property Property
+  userId String @db.ObjectId
+  reviews Review[] // Un post peut avoir plusieurs avis
+  createdAt DateTime @default(now())
+
+  // Relations
+  user User @relation(fields: [userId], references: [id])
+
+
+}
+
+
+model Review {
+  id String @id @default(auto()) @map("_id") @db.ObjectId
+  rating Int @default(0) // Note de 1 à 5
+  comment String?
+  userId String @db.ObjectId
+  postId String @db.ObjectId
+  createdAt DateTime @default(now())
+
+    // Relations
+  user User @relation(fields: [userId], references: [id])
+  post  Post @relation(fields: [postId], references: [id])
+}
+
+
+model Chat{
+  id String @id @default(auto()) @map("_id") @db.ObjectId
+  userIDs String[] @db.ObjectId
+  seenBy String[] @db.ObjectId
+  createdAt DateTime @default(now())
+  messages Message[]
+  lastMessage String?
+
+  // Relations
+  users User[] @relation(fields: [userIDs], references: [id])
+
+}
+
+model Message{
+  id String @id @default(auto()) @map("_id") @db.ObjectId
+  chatId String @db.ObjectId
+  senderId String
+  text String
+  createdAt DateTime @default(now())
+
+  // Relations
+  chat Chat @relation(fields: [chatId], references: [id])
+}
+
+
+enum Type {
+  BUY
+  RENT
+}
+
+enum Property {
+  APARTMENT
+  HOUSE
+  VILLA
+  NO_FURNITURE
+  FURNITURE
+  DUPLEX
+  STUDIO
+  S_1
+  S_2
+  S_3
+  
 }

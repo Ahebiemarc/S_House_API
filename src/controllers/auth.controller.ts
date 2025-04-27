@@ -4,18 +4,20 @@ import jwt from "jsonwebtoken";
 import prisma from "../lib/prisma";
 
 
+
 export const register = async (req: Request, res: Response) => {
-    const {username, email, password} = req.body;
 
    try {
+    const {username, email, password} = req.body;
+
     // hash password
     const hashedPassword = await bcrypt.hash(password, 10)
 
     // create and save new user to database
     const newUser = await prisma.user.create({
         data: {
-            username,
-            email,
+            username: username,
+            email: email,
             password: hashedPassword
         }
     });
@@ -31,9 +33,10 @@ export const register = async (req: Request, res: Response) => {
 
 export const login = async (req: Request, res: Response) => {
     // Code to authenticate | db operations
-    const {username, password} = req.body
 
     try {
+        const {username, password} = req.body
+
         // check if the user exists
 
         const user = await prisma.user.findUnique({where: {username: username}});
@@ -52,16 +55,16 @@ export const login = async (req: Request, res: Response) => {
 
         const age = 1000 * 60 * 60 * 24 * 7; // a one week
 
-        const token = jwt.sign({id: user.id}, process.env.JWT_SECRET_KEY, {expiresIn: age});
+        const token = jwt.sign({id: user.id, isAdmin: user.isAdmin}, process.env.JWT_SECRET_KEY, {expiresIn: age});
 
-        const {password: userPassword, ...userInfo} = user;
+        const {password: userPassword, isAdmin, ...userInfo} = user;
 
         res.cookie('HAUS_AUTH', token, 
             {
                 httpOnly: true,
                 //secure: true, // that's production
                 maxAge:age
-            }).status(200).json({message: "authentication successful!", user: userInfo});
+            }).status(200).json({message: "authentication successful!", token, user: userInfo});
 
     } catch (error) {
         console.log(error);
