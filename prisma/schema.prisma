@@ -34,14 +34,14 @@ model Post {
   id String @id @default(auto()) @map("_id") @db.ObjectId
   title String 
   price Int
-  img String[]
+  images String[]
   desc String
   address String
   city String
   bedroom Int
   bathroom Int
-  lattitude String
-  longitude String
+  latitude String?
+  longitude String?
   type Type
   property Property
   userId String @db.ObjectId
@@ -110,5 +110,6 @@ enum Property {
   S_1
   S_2
   S_3
+  All
   
 }

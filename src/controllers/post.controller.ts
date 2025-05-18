@@ -26,32 +26,98 @@ export const getAllPosts = async (req: Request, res: Response) => {
     }
 };
 
+export const getPostsByUserId = async (req: Request, res: Response) => {
+  try {
+    const userId = req.userId; // Assure-toi que le middleware d'auth remplit req.user.id
+
+    if (!userId) {
+      return res.status(401).json({ message: "Unauthorized: User not authenticated." });
+    }
+
+    const posts = await prisma.post.findMany({
+      where: { userId },
+      orderBy: { createdAt: "desc" },
+      include: {
+        user: {
+          select: { id: true, username: true, avatar: true },
+        },
+        reviews: true,
+      },
+    });
+
+    res.status(200).json(posts);
+  } catch (err) {
+    console.log(err);
+    res.status(500).json({ message: "Failed to fetch user posts!" });
+  }
+};
+
+
+
+export const getAllPostsByLimit = async (req: Request, res: Response) => {
+  try {
+    // Récupérer la limite depuis les paramètres de requête (ex: ?limit=10)
+    const limit = parseInt(req.query.limit as string) || 10; // 10 par défaut
+
+    const posts = await prisma.post.findMany({
+      take: limit, // Appliquer la limite
+      orderBy: { createdAt: "desc" },
+      include: {
+        user: {
+          select: { id: true, username: true, avatar: true },
+        },
+        reviews: true,
+      },
+    });
+
+    res.status(200).json(posts);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Failed to fetch posts!" });
+  }
+};
+
 
 export const getPostsByProperty = async (req: Request, res: Response) => {
-    const { property } = req.params;
+  const { property } = req.params;
+
+  let postsAll = null;
   
-    // Vérification si la valeur est valide
-    if (!Object.values(Property).includes(property as Property)) {
-      return res.status(400).json({ message: "Invalid property type!" });
-    }
-  
-    try {
-      const posts = await prisma.post.findMany({
-        where: { property: property.toUpperCase() as Property }, // Filtrer par property
-        orderBy: { createdAt: "desc" }, // Trier du plus récent au plus ancien
+  try {
+    if (property === "All") {
+      postsAll = await prisma.post.findMany({
+        orderBy: { createdAt: "desc" },
         include: {
           user: {
-            select: { id: true, username: true, avatar: true }, // Inclure l'auteur du post
+            select: { id: true, username: true, avatar: true },
+          },
+          reviews: true,
+        },
+      });
+    } else {
+      if (!Object.values(Property).includes(property.toUpperCase() as Property)) {
+        return res.status(400).json({ message: "Invalid property type!" });
+      }
+  
+      const posts = await prisma.post.findMany({
+        where: { property: property.toUpperCase() as Property },
+        orderBy: { createdAt: "desc" },
+        include: {
+          user: {
+            select: { id: true, username: true, avatar: true },
           },
           reviews: true,
         },
       });
   
-      res.status(200).json(posts);
-    } catch (err) {
-      console.log(err);
-      res.status(500).json({ message: "Failed to fetch posts!" });
+      postsAll =  posts;
     }
+  
+    res.status(200).json(postsAll);
+  } catch (err) {
+    console.log(err);
+    res.status(500).json({ message: "Failed to fetch posts!" });
+  }
 };
 
 
@@ -158,7 +224,7 @@ export const getPost = async (req: Request, res: Response) => {
 // Ajouter un post avec plusieurs images
 export const addPost = async (req: Request, res: Response) => {
     try {
-        const { title, price, address, desc, city, bedroom, bathroom, lattitude, longitude, type, property } = req.body;
+        const { title, price, address, desc, city, bedroom, bathroom, latitude, longitude, type, property } = req.body;
         const userId = req.userId; // Récupérer l'ID de l'utilisateur authentifié
 
         // Vérifier si les champs obligatoires sont remplis
@@ -166,31 +232,35 @@ export const addPost = async (req: Request, res: Response) => {
             return res.status(400).json({ message: "All required fields must be provided!" });
         }
 
+
         // Vérifier si des fichiers ont été envoyés
         if (!req.files || !(req.files as Express.Multer.File[]).length) {
             return res.status(400).json({ message: "At least one image is required!" });
         }
 
+        console.log("Body:", req.body);
+        console.log("Files:", req.files);
+        console.log("UserID:", req.userId);
+
         // Uploader les images sur Cloudinary
-        const images = await Promise.all(
-            (req.files as Express.Multer.File[]).map(async (file) => {
-                const result = await cloudinary.uploader.upload(file.path);
-                return result.secure_url; // Récupérer l'URL sécurisée de l'image
-            })
-        );
+        const images = (req.files as Express.Multer.File[]).map(file => file.path); // 'path' = URL Cloudinary
+
+
+        
+        
 
         // Créer le post dans la base de données
         const newPost: Post = await prisma.post.create({
             data: {
                 title,
                 price: Number(price),
-                img: images,
+                images: images,
                 address,
                 desc,
                 city,
                 bedroom: Number(bedroom),
                 bathroom: Number(bathroom),
-                lattitude,
+                latitude,
                 longitude,
                 type,
                 property,
@@ -211,7 +281,7 @@ export const addPost = async (req: Request, res: Response) => {
 /*export const updatePost = async (req: Request, res: Response) => {
   const { id } = req.params;
   const tokenUserId = req.userId;
-  const { title, price, address, city, bedroom, bathroom, lattitude, longitude, type, property, existingImages } = req.body;
+  const { title, price, address, city, bedroom, bathroom, latitude, longitude, type, property, existingImages } = req.body;
 
   try {
     // Vérifier si le post existe
@@ -244,7 +314,7 @@ export const addPost = async (req: Request, res: Response) => {
     }
 
     // Supprimer les anciennes images qui ne sont plus utilisées
-    const imagesToDelete = post.img.filter((url) => !updatedImages.includes(url));
+    const imagesToDelete = post.images.filter((url) => !updatedImages.includes(url));
 
     for (const imageUrl of imagesToDelete) {
       // Extraire le public_id de Cloudinary
@@ -265,11 +335,11 @@ export const addPost = async (req: Request, res: Response) => {
         city,
         bedroom: parseInt(bedroom),
         bathroom: parseInt(bathroom),
-        lattitude,
+        latitude,
         longitude,
         type,
         property,
-        img: updatedImages,
+        images: updatedImages,
       },
     });
 
@@ -285,7 +355,7 @@ export const updatePost = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     const userId = req.userId; // ID de l'utilisateur authentifié
-    const { title, price, address, desc, city, bedroom, bathroom, lattitude, longitude, type, property, existingImages } = req.body;
+    const { title, price, address, desc, city, bedroom, bathroom, latitude, longitude, type, property, existingImages } = req.body;
     
     // Vérifier si le post existe
     const existingPost = await prisma.post.findUnique({
@@ -302,7 +372,7 @@ export const updatePost = async (req: Request, res: Response) => {
     }
 
     // Récupérer les images existantes du post
-    const currentImages = existingPost.img;
+    const currentImages = existingPost.images;
     
     // Déterminer quelles images ont été supprimées
     // existingImages contient les URLs des images que l'utilisateur veut conserver
@@ -311,7 +381,7 @@ export const updatePost = async (req: Request, res: Response) => {
       [];
     
     // Identifier les images à supprimer dans Cloudinary
-    const imagesToDelete = currentImages.filter(img => !imagesToKeep.includes(img));
+    const imagesToDelete = currentImages.filter(images => !imagesToKeep.includes(images));
     
     // Supprimer les images de Cloudinary
     for (const imageUrl of imagesToDelete) {
@@ -338,7 +408,7 @@ export const updatePost = async (req: Request, res: Response) => {
       );
     }
 
-    //const imagePost = imagesToKeep.length === 0 ?  existingPost.img : imagesToKeep;
+    //const imagePost = imagesToKeep.length === 0 ?  existingPost.images : imagesToKeep;
     
     // Combiner les images existantes à conserver avec les nouvelles images
     const updatedImages = [...imagesToKeep, ...newImages];
@@ -349,13 +419,13 @@ export const updatePost = async (req: Request, res: Response) => {
       data: {
         title: title || existingPost.title,
         price: price ? Number(price) : existingPost.price,
-        img: updatedImages,
+        images: updatedImages,
         address: address || existingPost.address,
         desc: desc || existingPost.desc,
         city: city || existingPost.city,
         bedroom: bedroom ? Number(bedroom) : existingPost.bedroom,
         bathroom: bathroom ? Number(bathroom) : existingPost.bathroom,
-        lattitude: lattitude || existingPost.lattitude,
+        latitude: latitude || existingPost.latitude,
         longitude: longitude || existingPost.longitude,
         type: type || existingPost.type,
         property: property || existingPost.property,
@@ -395,7 +465,7 @@ export const deletePost = async (req: Request, res: Response) => {
     }
 
     // Supprimer les images associées sur Cloudinary
-    for (const imageUrl of post.img) {
+    for (const imageUrl of post.images) {
       try {
         const publicId = imageUrl.split("/").pop()?.split(".")[0];
         await cloudinary.uploader.destroy(`posts/${publicId}`);
