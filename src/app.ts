@@ -18,12 +18,14 @@ const app = express();
 // middleware
 
 
-app.use(cors());
+//app.use(cors());
 
 app.use(express.json());
 app.use(cookieParser());
-app.use(cors({credentials:true}));
-
+app.use(cors({
+  origin: "*", // ou précise l’origine
+  credentials: true,
+}));
 
 // app routes
 app.use('/api/auth', authRoute);

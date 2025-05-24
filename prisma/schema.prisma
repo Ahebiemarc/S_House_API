@@ -40,8 +40,8 @@ model Post {
   city String
   bedroom Int
   bathroom Int
-  latitude String?
-  longitude String?
+  latitude Float?
+  longitude Float?
   type Type
   property Property
   userId String @db.ObjectId

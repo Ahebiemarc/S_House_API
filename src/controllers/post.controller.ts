@@ -226,6 +226,10 @@ export const addPost = async (req: Request, res: Response) => {
     try {
         const { title, price, address, desc, city, bedroom, bathroom, latitude, longitude, type, property } = req.body;
         const userId = req.userId; // Récupérer l'ID de l'utilisateur authentifié
+        console.log(userId);
+        
+        console.log(req.body);
+
 
         // Vérifier si les champs obligatoires sont remplis
         if (!title || !price || !address || !desc || !city || !type || !property) {
@@ -260,8 +264,8 @@ export const addPost = async (req: Request, res: Response) => {
                 city,
                 bedroom: Number(bedroom),
                 bathroom: Number(bathroom),
-                latitude,
-                longitude,
+                latitude : Number(latitude),
+                longitude: Number(longitude),
                 type,
                 property,
                 userId,
@@ -356,6 +360,13 @@ export const updatePost = async (req: Request, res: Response) => {
     const { id } = req.params;
     const userId = req.userId; // ID de l'utilisateur authentifié
     const { title, price, address, desc, city, bedroom, bathroom, latitude, longitude, type, property, existingImages } = req.body;
+
+    console.log(id);
+    console.log(userId);
+    console.log(req.body);
+    
+    
+    
     
     // Vérifier si le post existe
     const existingPost = await prisma.post.findUnique({
@@ -425,8 +436,8 @@ export const updatePost = async (req: Request, res: Response) => {
         city: city || existingPost.city,
         bedroom: bedroom ? Number(bedroom) : existingPost.bedroom,
         bathroom: bathroom ? Number(bathroom) : existingPost.bathroom,
-        latitude: latitude || existingPost.latitude,
-        longitude: longitude || existingPost.longitude,
+        latitude: Number(latitude) || Number(existingPost.latitude),
+        longitude: Number(longitude) || Number(existingPost.longitude),
         type: type || existingPost.type,
         property: property || existingPost.property,
       },
