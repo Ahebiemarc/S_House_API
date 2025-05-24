@@ -4,11 +4,11 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "start": "nodemon",
+    "start-dev": "nodemon",
+    "start": "node dist/index.js",
     "push": "npx prisma db push",
     "build": "prisma generate && tsc",
     "migrate-prod": "npx prisma migrate dev",
-    "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
   "author": "",
