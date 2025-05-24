@@ -6,6 +6,7 @@
   "scripts": {
     "start": "nodemon",
     "push": "npx prisma db push",
+    "build": "prisma generate && tsc",
     "migrate-prod": "npx prisma migrate dev",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
