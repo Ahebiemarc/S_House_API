@@ -20,6 +20,26 @@ export const getUsers = async (req: Request, res: Response) =>{
       }
 };
 
+
+
+export const getUser = async (req: Request, res: Response) =>{
+    const id = req.userId;
+    try {
+        const user = await prisma.user.findUnique({
+        where: { id },
+        include: {
+          reviews: true, 
+        },
+        });
+        res.status(200).json({ user });
+    } catch (err) {
+        console.log(err);
+        res.status(500).json({ message: "Failed to get user!" });
+    }
+};
+
+
+
 export const getUserById = async (req: Request, res: Response) => {
   const userId = req.params.id;
   try {
@@ -39,24 +59,6 @@ export const getUserById = async (req: Request, res: Response) => {
     res.status(500).json({ message: 'Erreur serveur' });
   }
 };
-
-
-export const getUser = async (req: Request, res: Response) =>{
-    const id = req.userId;
-    try {
-        const user = await prisma.user.findUnique({
-        where: { id },
-        include: {
-          reviews: true, 
-        },
-        });
-        res.status(200).json({ user });
-    } catch (err) {
-        console.log(err);
-        res.status(500).json({ message: "Failed to get user!" });
-    }
-};
-
 
 
 export const updateUser = async (req: Request, res: Response) => {
