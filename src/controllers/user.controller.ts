@@ -20,6 +20,26 @@ export const getUsers = async (req: Request, res: Response) =>{
       }
 };
 
+export const getUserById = async (req: Request, res: Response) => {
+  const userId = req.params.id;
+  try {
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { id: true, username: true, avatar: true } // UserMinimal
+    });
+
+    if (!user) {
+       res.status(404).json({ message: 'Utilisateur non trouvé' });
+       return
+    }
+
+    res.status(200).json(user);
+  } catch (err) {
+    console.error('Erreur lors de la récupération du user:', err);
+    res.status(500).json({ message: 'Erreur serveur' });
+  }
+};
+
 
 export const getUser = async (req: Request, res: Response) =>{
     const id = req.userId;

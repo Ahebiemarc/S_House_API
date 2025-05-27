@@ -1,3 +1,5 @@
+//routes/chat.route.ts
+
 import {Router} from 'express';
 import { getChats, getChat, addChat, readChat } from '../controllers/chat.controller';
 import { verifyToken } from '../middleware/verifyToken';

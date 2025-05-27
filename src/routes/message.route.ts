@@ -1,3 +1,5 @@
+//routes/message.route.ts
+
 import {Router} from 'express';
 import { addMessage, deleteMessage, updateMessage } from '../controllers/message.controller';
 import { verifyToken } from '../middleware/verifyToken';

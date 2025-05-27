@@ -1,6 +1,5 @@
+//controllers/chat.controller.ts
 import { Request, Response } from "express";
-import bcrypt from "bcrypt";
-import jwt from "jsonwebtoken";
 import prisma from "../lib/prisma";
 import { decryptMessage } from "../utils/decryptMessage";
 import { ChatWithReceiverAndSender } from "../types/chat.types";
@@ -40,14 +39,16 @@ export const getChats = async (req: Request, res: Response) =>{
         // �� Déchiffrage de chaque message
         let chatWithDecryptedMessages;
         for (const chat of chats) {
-             // 🔓 Déchiffrer chaque message
-            const decryptedMessages = chat.messages.map(message => ({
+            // 🔓 Déchiffrer chaque message
+            const decryptedMessages = chat.messages.map((message) => ({
                 ...message,
-                text: decryptMessage(message.text) // Déchiffrer le texte du message
+                text: decryptMessage(message.text) ?? '[Message illisible]',
             }));
-
+            
             // 🔓 Déchiffrer le dernier message
-            const decryptedLastMessage = decryptMessage(chat.lastMessage)
+            const decryptedLastMessage = chat.lastMessage
+                ? decryptMessage(chat.lastMessage) ?? '[Message illisible]'
+                : null;
 
             // 📌 Mettre à jour le chat avec les messages déchiffrés
             chatWithDecryptedMessages = { ...chat, messages: decryptedMessages, lastMessage: decryptedLastMessage };
@@ -98,13 +99,15 @@ export const getChat = async (req: Request, res: Response) => {
 
 
         // 🔓 Déchiffrer chaque message
-        const decryptedMessages = chat.messages.map(message => ({
+        const decryptedMessages = chat.messages.map((message) => ({
             ...message,
-            text: decryptMessage(message.text) // Déchiffrer le texte du message
+            text: decryptMessage(message.text) ?? '[Message illisible]',
         }));
-
+        
         // 🔓 Déchiffrer le dernier message
-        const decryptedLastMessage = decryptMessage(chat.lastMessage)
+        const decryptedLastMessage = chat.lastMessage
+            ? decryptMessage(chat.lastMessage) ?? '[Message illisible]'
+            : null;
 
         // 📌 Mettre à jour le chat avec les messages déchiffrés
         const chatWithDecryptedMessages = { ...chat, messages: decryptedMessages, lastMessage: decryptedLastMessage };
@@ -128,6 +131,17 @@ export const addChat = async (req: Request, res: Response) =>{
     try {
         const userId = req.userId;
         const { recipientId } = req.body;
+
+        const existingChat = await prisma.chat.findFirst({
+            where: {
+              userIDs: { hasEvery: [userId, recipientId] },
+            },
+          });
+          
+        if (existingChat){
+            res.status(200).json(existingChat);
+            return;
+        }
         // Check if the recipient exists
         const userRecipient = await prisma.user.findUnique({
             where:{id : recipientId}

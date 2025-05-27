@@ -1,8 +1,9 @@
+//controllers/message.controller.ts
+
+
 import { Request, Response } from "express";
 import prisma from "../lib/prisma";
 import CryptoJS from "crypto-js";
-
-
 
 
 export const addMessage = async (req: Request, res: Response) => {
