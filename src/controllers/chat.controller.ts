@@ -5,64 +5,63 @@ import { decryptMessage } from "../utils/decryptMessage";
 import { ChatWithReceiverAndSender } from "../types/chat.types";
 
 
-export const getChats = async (req: Request, res: Response) =>{
+export const getChats = async (req: Request, res: Response) => {
     try {
         const userId = req.userId;
-        const chats : ChatWithReceiverAndSender[] = await prisma.chat.findMany({
-           orderBy : {createdAt: 'desc'},
-            where: { userIDs:{
-                hasSome: [userId]
-            } },
-            include: { 
-                messages:{
-                orderBy:{createdAt: 'desc'}
-              }
-           },
+
+        const chats: ChatWithReceiverAndSender[] = await prisma.chat.findMany({
+            orderBy: { createdAt: 'desc' },
+            where: {
+                userIDs: {
+                    hasSome: [userId],
+                },
+            },
+            include: {
+                messages: {
+                    orderBy: { createdAt: 'desc' },
+                },
+            },
         });
+
+        const chatWithDecryptedMessages = [];
 
         for (const chat of chats) {
             const receiverId = chat.userIDs.find((id) => id !== userId);
-      
-            const receiver = await prisma.user.findUnique({
-              where: {
-                id: receiverId,
-              },
-              select: {
-                id: true,
-                username: true,
-                avatar: true,
-              },
-            });
-            chat.receiver = receiver;
-        }
 
-        // �� Déchiffrage de chaque message
-        let chatWithDecryptedMessages;
-        for (const chat of chats) {
-            // 🔓 Déchiffrer chaque message
+            const receiver = await prisma.user.findUnique({
+                where: { id: receiverId },
+                select: {
+                    id: true,
+                    username: true,
+                    avatar: true,
+                },
+            });
+
+            chat.receiver = receiver;
+
             const decryptedMessages = chat.messages.map((message) => ({
                 ...message,
                 text: decryptMessage(message.text) ?? '[Message illisible]',
             }));
-            
-            // 🔓 Déchiffrer le dernier message
-            const decryptedLastMessage = chat.lastMessage
-                ? decryptMessage(chat.lastMessage) ?? '[Message illisible]'
+
+            const decryptedLastMessage = chat.messages?.[0]?.text
+                ? decryptMessage(chat.messages[0].text) ?? '[Message illisible]'
                 : null;
 
-            // 📌 Mettre à jour le chat avec les messages déchiffrés
-            chatWithDecryptedMessages = { ...chat, messages: decryptedMessages, lastMessage: decryptedLastMessage };
+            chatWithDecryptedMessages.push({
+                ...chat,
+                messages: decryptedMessages,
+                lastMessage: decryptedLastMessage,
+            });
         }
 
         res.status(200).json(chatWithDecryptedMessages);
-        // TODO: Handle unread messages
     } catch (error) {
         console.error("Error fetching chat:", error);
         res.status(500).json({ message: "Failed to fetch chat!" });
-    
-    
     }
-}
+};
+
 
 
 export const getChat = async (req: Request, res: Response) => {
