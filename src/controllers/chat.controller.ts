@@ -48,10 +48,17 @@ export const getChats = async (req: Request, res: Response) => {
                 ? decryptMessage(chat.messages[0].text) ?? '[Message illisible]'
                 : null;
 
+            // Calculate unread count based on seenBy
+            const isSeenByCurrentUser = chat.seenBy.includes(userId);
+            const unreadCount = isSeenByCurrentUser
+                ? 0
+                : chat.messages.filter(msg => msg.senderId !== userId).length;
+
             chatWithDecryptedMessages.push({
                 ...chat,
                 messages: decryptedMessages,
                 lastMessage: decryptedLastMessage,
+                unreadCount,
             });
         }
 
@@ -70,12 +77,12 @@ export const getChat = async (req: Request, res: Response) => {
         const chatId = req.params.id;
 
         // 🔍 Récupérer le chat avec les messages
-        const chat : ChatWithReceiverAndSender = await prisma.chat.findUnique({
-            where: { 
+        const chat: ChatWithReceiverAndSender = await prisma.chat.findUnique({
+            where: {
                 id: chatId,
                 userIDs: { hasSome: [userId] }
             },
-            include: { 
+            include: {
                 messages: {
                     orderBy: { createdAt: 'desc' }
                 },
@@ -83,18 +90,18 @@ export const getChat = async (req: Request, res: Response) => {
         });
 
         const receiverId = chat.userIDs.find((id) => id !== userId);
-      
-            const receiver = await prisma.user.findUnique({
-              where: {
+
+        const receiver = await prisma.user.findUnique({
+            where: {
                 id: receiverId,
-              },
-              select: {
+            },
+            select: {
                 id: true,
                 username: true,
                 avatar: true,
-              },
-            });
-            chat.receiver = receiver;
+            },
+        });
+        chat.receiver = receiver;
 
 
         // 🔓 Déchiffrer chaque message
@@ -102,7 +109,7 @@ export const getChat = async (req: Request, res: Response) => {
             ...message,
             text: decryptMessage(message.text) ?? '[Message illisible]',
         }));
-        
+
         // 🔓 Déchiffrer le dernier message
         const decryptedLastMessage = chat.lastMessage
             ? decryptMessage(chat.lastMessage) ?? '[Message illisible]'
@@ -126,27 +133,27 @@ export const getChat = async (req: Request, res: Response) => {
 };
 
 
-export const addChat = async (req: Request, res: Response) =>{
+export const addChat = async (req: Request, res: Response) => {
     try {
         const userId = req.userId;
         const { recipientId } = req.body;
 
         const existingChat = await prisma.chat.findFirst({
             where: {
-              userIDs: { hasEvery: [userId, recipientId] },
+                userIDs: { hasEvery: [userId, recipientId] },
             },
-          });
-          
-        if (existingChat){
+        });
+
+        if (existingChat) {
             res.status(200).json(existingChat);
             return;
         }
         // Check if the recipient exists
         const userRecipient = await prisma.user.findUnique({
-            where:{id : recipientId}
-        }) 
+            where: { id: recipientId }
+        })
 
-        if(!userRecipient){
+        if (!userRecipient) {
             res.status(403).json({ message: "recipientId does'nt exist!" });
 
         }
@@ -154,7 +161,7 @@ export const addChat = async (req: Request, res: Response) =>{
 
         const newChat = await prisma.chat.create({
             data: {
-                userIDs: [ userId, recipientId],
+                userIDs: [userId, recipientId],
             },
         });
         res.status(201).json(newChat);
@@ -167,24 +174,24 @@ export const addChat = async (req: Request, res: Response) =>{
 }
 
 
-export const readChat = async (req: Request, res: Response) =>{
+export const readChat = async (req: Request, res: Response) => {
     try {
         const userId = req.userId;
         const chatId = req.params.id
         const chat = await prisma.chat.update({
-            where: { 
+            where: {
                 id: chatId,
-                userIDs: {hasSome: [userId]} 
+                userIDs: { hasSome: [userId] }
             },
             data: {
-                seenBy: {set: [userId]},
-            },        
+                seenBy: { set: [userId] },
+            },
         });
 
         await prisma.chat.update({
-            where: {id: chatId},
+            where: { id: chatId },
             data: {
-              seenBy: {set: [userId]},
+                seenBy: { set: [userId] },
             },
         });
 
@@ -193,7 +200,7 @@ export const readChat = async (req: Request, res: Response) =>{
     } catch (error) {
         console.error("Error fetching chat:", error);
         res.status(500).json({ message: "Failed to fetch chat!" });
-    
-    
+
+
     }
 }
